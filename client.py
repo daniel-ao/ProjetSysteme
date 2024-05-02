@@ -58,7 +58,7 @@ def receive_messages(sock):
             message = sock.recv(1024)
             if message:
                 clear_line()  # Clear the input line before showing the new message
-                print("Received:", message.decode('utf-8'))
+                print(message.decode('utf-8'))
                 sys.stdout.write("Enter your message or command: ")
                 sys.stdout.flush()  # Make sure the prompt is displayed
             else:

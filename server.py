@@ -132,7 +132,6 @@ def handle_direct_command(client_socket, parts):
     else:
         client_socket.send("You entered an extra argument".encode('utf-8'))
             
-
 def handle_logout(client_socket):
     """Handle the logout command."""
     logging.info(f"Client {clients[client_socket]['pseudonym']} has disconnected.")
@@ -168,15 +167,19 @@ def process_command(client_socket, message):
         logging.info("Unknown command received")
 
 def broadcast_message(sender_socket, message):
-    """Broadcast a message to all clients except the sender."""
+    """Broadcast a message to all clients except the sender, including the sender's pseudonym."""
+    sender_pseudonym = clients[sender_socket]['pseudonym']  # Get the pseudonym of the sender
+    full_message = f"{sender_pseudonym}: {message.decode('utf-8')}".encode('utf-8')  # Prepend pseudonym to the message
+
     for client_socket in clients:
         if client_socket != sender_socket:  # Exclude the sender from receiving the message
             try:
-                client_socket.send(message)  # Send message to each client
+                client_socket.send(full_message)  # Send the message to each client
             except Exception as e:
                 logging.error(f"Failed to send message to {clients[client_socket]['address'][0]}: {str(e)}")
                 client_socket.close()
                 clients.pop(client_socket, None)
+
 
 
 
