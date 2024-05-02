@@ -3,7 +3,9 @@ import select
 import os
 import sys
 import threading
-import curses
+import logging
+logging.basicConfig(filename='client.log', filemode='a', level=logging.DEBUG,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 def connect_to_server(server_ip, server_port):
@@ -30,11 +32,17 @@ def send_message(sock, message):
     """Send a message to the server."""
     try:
         sock.send(message.encode('utf-8'))
+    except socket.error as e:
+        print(f"Socket error: {e}")
+        logging.error(f"Socket error while sending message: {e}")
     except Exception as e:
-        print(f"Error sending message: {e}")
-        if sock:
+        print(f"Unexpected error: {e}")
+        logging.error(f"Unexpected error while sending message: {e}")
+    finally:
+        if 'e' in locals():  # Check if an exception was caught
             sock.close()
-        sys.exit()
+            sys.exit("Disconnected due to an error. Please restart the client.")
+
 
 
 def clear_line():
@@ -55,13 +63,20 @@ def receive_messages(sock):
                 sys.stdout.flush()  # Make sure the prompt is displayed
             else:
                 # Server has likely closed the connection
-                clear_line()
-                print("Server has disconnected.")
-                sock.close()
-                break
+                raise ConnectionAbortedError("Server has disconnected.")
+    except ConnectionAbortedError as e:
+        print(e)
+        logging.error(f"Connection aborted: {e}")
+    except socket.error as e:
+        print(f"Socket error: {e}")
+        logging.error(f"Socket error: {e}")
     except Exception as e:
-        print(f"Lost connection to the server: {e}")
+        print(f"Unexpected error: {e}")
+        logging.error(f"Unexpected error during message reception: {e}")
+    finally:
         sock.close()
+        sys.exit("Disconnected. Please restart the client.")
+
 
 
 def handle_user_input(sock):
