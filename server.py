@@ -89,38 +89,38 @@ def handle_forgive(target_client):
 
 def handle_direct_command(client_socket, parts):
     sender_pseudonym = clients[client_socket]['pseudonym']  # Retrieve sender's pseudonym
-    pseudo = parts[0][1:]  # Extract the target pseudonym from the command
-    '''
-        @        -> error
-        @NotUser -> NO user found
-        @User    -> give msg
-        @User msg
-        @User !command
-        @User !    -> error
-    '''
-    #If @ only without enterering a pseudonym following the @ symbol:
+    # Start by identifying if the message is a private message or a command.
+    recipients = []
+    message = []
+    command_flag = False
     if len(parts[0]) == 1:
         client_socket.send("Enter a pseudonym.".encode('utf-8'))
         return
+    for part in parts:
+        if part.startswith('!') and len(message) == 0:  # command detected
+            command_flag = True
+            break
+        elif part.startswith('@'):
+            recipients.append(part[1:])
+        else:
+            message.append(part)
 
-    #If User is not admin:
-    if sender_pseudonym != MODERATOR_PSEUDONYM:
-        client_socket.send("Unauthorized command execution.".encode('utf-8'))
+    if not recipients:
+        client_socket.send("Enter a valid pseudonym after '@'.".encode('utf-8'))
         return
-    #If user is not found
-    target_client = get_client_by_pseudonym(pseudo)
-    if target_client is None:
-        client_socket.send(f"No such user: {pseudo}".encode('utf-8'))
-        return
-    #If the code execution reached here, then we have an input of the form @User untill now and waitinf for an input of @User msg or @User !command
-    if len(parts) == 1:
-        client_socket.send("You didn't enter neither a command nor a PM.".encode('utf-8'))
-    elif len(parts) == 2 or len(parts) == 3:
-        #Next: If we have 3 arguments, we need to deal with them. And if we have more, we need to give an error message
+
+    if command_flag:
+        # This is a command to a specific user.
+        if sender_pseudonym != MODERATOR_PSEUDONYM:
+            client_socket.send("Unauthorized command execution.".encode('utf-8'))
+            return
+        target_client = get_client_by_pseudonym(recipients[0])  # Assuming command to first user only
+        if target_client is None:
+            client_socket.send(f"No such user: {recipients[0]}".encode('utf-8'))
+            return
+
         command = parts[1]
-        if command == '!':
-            client_socket.send("Enter a command".encode('utf-8'))
-        elif command == '!ban':
+        if command == '!ban':
             handle_ban(target_client)
         elif command == '!suspend':
             handle_suspend(target_client)
@@ -128,9 +128,24 @@ def handle_direct_command(client_socket, parts):
             handle_forgive(target_client)
         else:
             client_socket.send("Unknown command.".encode('utf-8'))
-    
     else:
-        client_socket.send("You entered an extra argument".encode('utf-8'))
+        # Handling private message to one or more users including Moderator
+        if len(message) == 0:
+            client_socket.send("You didn't enter a message.".encode('utf-8'))
+            return
+
+        final_message = f"PM from {sender_pseudonym}: {' '.join(message)}"
+        # Send message to all recipients and Moderator (if not already included)
+        recipients.append(MODERATOR_PSEUDONYM)  # Ensure moderator gets the PM
+        recipients = set(recipients)  # Remove duplicates
+        for recipient in recipients:
+            target_client = get_client_by_pseudonym(recipient)
+            if target_client:
+                target_client.send(final_message.encode('utf-8'))
+            elif recipient != MODERATOR_PSEUDONYM:
+                client_socket.send(f"No such user: {recipient}".encode('utf-8'))
+            #else:
+            #   client_socket.send(f"No such user: {recipient}".encode('utf-8'))
             
 def handle_logout(client_socket):
     """Handle the logout command."""
@@ -161,6 +176,8 @@ def process_command(client_socket, message):
     # Process commands or logout requests
     if command == "logout":
         handle_logout(client_socket)
+    elif command == "!list":
+        client_socket.send(f"Active clients: {', '.join([clients[sock]['pseudonym'] for sock in clients])}".encode('utf-8'))
     elif command.startswith('@'):
         handle_direct_command(client_socket, parts)
     else:
@@ -170,7 +187,7 @@ def broadcast_message(sender_socket, message):
     """Broadcast a message to all clients except the sender, including the sender's pseudonym."""
     sender_pseudonym = clients[sender_socket]['pseudonym']  # Get the pseudonym of the sender
     full_message = f"{sender_pseudonym}: {message.decode('utf-8')}".encode('utf-8')  # Prepend pseudonym to the message
-
+    closed_clients = []
     for client_socket in clients:
         if client_socket != sender_socket:  # Exclude the sender from receiving the message
             try:
@@ -178,9 +195,26 @@ def broadcast_message(sender_socket, message):
             except Exception as e:
                 logging.error(f"Failed to send message to {clients[client_socket]['address'][0]}: {str(e)}")
                 client_socket.close()
-                clients.pop(client_socket, None)
+                closed_clients.append(client_socket)
+    # Clean up closed client sockets
+    for client_socket in closed_clients:
+        clients.pop(client_socket, None)
 
 
+def safe_close_socket(client_socket):
+    """ Safely close the client socket. """
+    if client_socket in clients:
+        try:
+            # Shut down the socket to send and receive
+            client_socket.shutdown(socket.SHUT_RDWR)
+        except socket.error as e:
+            logging.error(f"Error shutting down socket: {e}")
+        finally:
+            # Close the socket safely
+            client_socket.close()
+            # Remove from the client list to avoid using closed socket
+            clients.pop(client_socket, None)
+            logging.info("Socket closed and removed from clients list.")
 
 
 # Main function to start the server

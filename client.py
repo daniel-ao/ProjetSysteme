@@ -45,6 +45,8 @@ def send_message(sock, message):
 
 
 
+#-------------------------------------------------#
+
 def clear_line():
     """Clear the current line in the terminal."""
     sys.stdout.write('\r')
@@ -103,3 +105,5 @@ if __name__ == "__main__":
     sock = connect_to_server(server_ip, server_port)
     threading.Thread(target=receive_messages, args=(sock,), daemon=True).start()
     handle_user_input(sock)
+
+#-------------------------------------------------#
