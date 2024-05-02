@@ -11,8 +11,8 @@ import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Server configuration variables
-SERVER_IP = '127.0.0.7'  # Listen on all network interfaces
-SERVER_PORT = 2010  # Port to listen on
+SERVER_IP = '127.0.0.1'  # Listen on all network interfaces
+SERVER_PORT = 2024  # Port to listen on
 MAX_CONNECTIONS = 10  # Maximum number of simultaneous client connections
 MODERATOR_PSEUDONYM = "Admin"
 

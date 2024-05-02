@@ -24,7 +24,7 @@ def connect_to_server(server_ip, server_port):
     except Exception as e:
         print(f"Failed to connect to the server at {server_ip}:{server_port}: {e}")
         sys.exit()
-
+    
 
 def send_message(sock, message):
     """Send a message to the server."""
@@ -36,10 +36,12 @@ def send_message(sock, message):
             sock.close()
         sys.exit()
 
+
 def clear_line():
     """Clear the current line in the terminal."""
     sys.stdout.write('\r')
     sys.stdout.write('\033[K')  # ANSI escape sequence to clear the line
+
 
 def receive_messages(sock):
     """Continuously listen for messages from the server."""
