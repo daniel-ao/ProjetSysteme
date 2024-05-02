@@ -90,27 +90,29 @@ def handle_forgive(target_client):
 def handle_direct_command(client_socket, parts):
     sender_pseudonym = clients[client_socket]['pseudonym']  # Retrieve sender's pseudonym
     pseudo = parts[0][1:]  # Extract the target pseudonym from the command
-    '''@        -> error
-@NotUser -> NO user found
-@User    -> give msg
-@User msg
-@User !command
-@User !    -> error'''
-    #If @ only:
+    '''
+        @        -> error
+        @NotUser -> NO user found
+        @User    -> give msg
+        @User msg
+        @User !command
+        @User !    -> error
+    '''
+    #If @ only without enterering a pseudonym following the @ symbol:
     if len(parts[0]) == 1:
         client_socket.send("Enter a pseudonym.".encode('utf-8'))
         return
 
-
+    #If User is not admin:
     if sender_pseudonym != MODERATOR_PSEUDONYM:
         client_socket.send("Unauthorized command execution.".encode('utf-8'))
         return
-
+    #If user is not found
     target_client = get_client_by_pseudonym(pseudo)
     if target_client is None:
         client_socket.send(f"No such user: {pseudo}".encode('utf-8'))
         return
-
+    #If the code execution reached here, then we have an input of the form @User untill now and waitinf for an input of @User msg or @User !command
     if len(parts) == 1:
         client_socket.send("You didn't enter neither a command nor a PM.".encode('utf-8'))
     elif len(parts) == 2 or len(parts) == 3:

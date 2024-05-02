@@ -1,7 +1,9 @@
 import socket
 import select
+import os
 import sys
 import threading
+import curses
 
 
 def connect_to_server(server_ip, server_port):
@@ -34,6 +36,10 @@ def send_message(sock, message):
             sock.close()
         sys.exit()
 
+def clear_line():
+    """Clear the current line in the terminal."""
+    sys.stdout.write('\r')
+    sys.stdout.write('\033[K')  # ANSI escape sequence to clear the line
 
 def receive_messages(sock):
     """Continuously listen for messages from the server."""
@@ -41,9 +47,13 @@ def receive_messages(sock):
         while True:
             message = sock.recv(1024)
             if message:
+                clear_line()  # Clear the input line before showing the new message
                 print("Received:", message.decode('utf-8'))
+                sys.stdout.write("Enter your message or command: ")
+                sys.stdout.flush()  # Make sure the prompt is displayed
             else:
                 # Server has likely closed the connection
+                clear_line()
                 print("Server has disconnected.")
                 sock.close()
                 break
@@ -53,11 +63,13 @@ def receive_messages(sock):
 
 
 def handle_user_input(sock):
-    """Handle user input to send messages to the server."""
+    """Handle user input without blocking the display of incoming messages."""
     while True:
-        message = input("Enter your message or command: ")
+        sys.stdout.write("Enter your message or command: ")
+        sys.stdout.flush()
+        message = input()
         if message.lower() == 'quit':
-            send_message(sock, "logout")  # Notify server of the intention to disconnect
+            send_message(sock, "logout")
             break
         send_message(sock, message)
 
