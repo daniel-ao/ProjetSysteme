@@ -230,7 +230,9 @@ def start_server():
                     pseudonym = client_socket.recv(1024).decode('utf-8').strip()  # Assume the first message is the pseudonym
                     if pseudonym in [clients[sock]['pseudonym'] for sock in clients]:
                         client_socket.send(b"Pseudonym already in use.")
+                        logging.info("test1")
                         client_socket.close()
+                        logging.info("test2")
                     else:
                         clients[client_socket] = {'address': client_address, 'data': [], 'pseudonym': pseudonym}
                         logging.info(f"Accepted new connection from {client_address[0]}:{client_address[1]} with pseudonym: {pseudonym}")
