@@ -29,6 +29,8 @@ server_socket.listen(MAX_CONNECTIONS)
 
 logging.info(f"Server started on {SERVER_IP} : {SERVER_PORT}.")
 
+#-------------------------------------------------#
+
 
 def get_client_by_pseudonym(pseudonym):
     """Retrieve client socket based on pseudonym."""
@@ -36,6 +38,9 @@ def get_client_by_pseudonym(pseudonym):
         if details['pseudonym'] == pseudonym:
             return client
     return None
+
+
+#-------------------------------------------------#
 
 
 def handle_start_game(client_socket, parts):
@@ -52,9 +57,9 @@ def handle_ban(target_client):
     """Ban a player specified by the client socket."""
     if target_client in clients:
         target_client.send("You have been banned from the game.".encode('utf-8'))
-        ban_message = f"Player {clients[target_client]['pseudonym']} has been banned."
+        ban_message = f"Player {clients[target_client]['pseudonym']} has been banned"
         broadcast_message(target_client, ban_message.encode('utf-8'))
-        logging.info(f"{ban_message} By {clients[target_client]['Admin']}.")
+        logging.info(f"{ban_message} by Admin")
         target_client.close()
         clients.pop(target_client, None)
     else:
@@ -154,6 +159,20 @@ def handle_logout(client_socket):
     client_socket.close()
     clients.pop(client_socket, None)
 
+def handle_shutodwn():
+    logging.info("Server is shutting down on admin command.")
+    for client_socket in list(clients.keys()):
+        try:
+            client_socket.send("Server is shutting down.".encode('utf-8'))
+            client_socket.close()
+        except socket.error as e:
+            logging.error(f"Error closing client socket: {e}")
+    global server_socket
+    server_socket.close()
+    os._exit(0)  # Forcefully stop the program
+
+
+#-------------------------------------------------#
 
 
 def process_command(client_socket, message):
@@ -175,8 +194,13 @@ def process_command(client_socket, message):
                 return
 
         # Process commands or logout requests
-        if command == "logout":
+        if command == "!logout":
             handle_logout(client_socket)
+        elif command == "!shutdown":
+            if sender_pseudonym == MODERATOR_PSEUDONYM:
+                handle_shutodwn()
+            else:
+                client_socket.send("Unauthorized to shut down the server.".encode('utf-8'))
         elif command == "!list":
             client_socket.send(f"Active clients: {', '.join([clients[sock]['pseudonym'] for sock in clients])}".encode('utf-8'))
         elif command.startswith('@'):
@@ -210,7 +234,6 @@ def broadcast_message(sender_socket, message):
     for client_socket in closed_clients:
         clients.pop(client_socket, None)
 
-
 def close_client_connection(client_socket):
     try:
         client_socket.close()
@@ -218,6 +241,9 @@ def close_client_connection(client_socket):
         logging.info(f"Closed connection from {clients[client_socket]['address'][0]}.")
     except Exception as e:
         logging.error("Error closing client connection: " + str(e))
+
+
+#-------------------------------------------------#
 
 # Main function to start the server
 def start_server():
@@ -259,11 +285,6 @@ def start_server():
                         notified_socket.close()
 
             for notified_socket in exception_sockets:
-                '''# Safely handle client disconnection and remove them from the client list
-                if notified_socket in clients:
-                    logging.error(f"Handling exception for {clients[notified_socket]['address'][0]}")
-                    clients.pop(notified_socket)
-                    notified_socket.close()'''
                 close_client_connection(notified_socket)
                 
     except Exception as e:
@@ -278,3 +299,5 @@ def start_server():
 
 if __name__ == "__main__":
     start_server()
+
+#-------------------------------------------------#
