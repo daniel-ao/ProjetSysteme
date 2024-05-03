@@ -27,7 +27,7 @@ server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.bind((SERVER_IP, SERVER_PORT))
 server_socket.listen(MAX_CONNECTIONS)
 
-logging.info(f"Server started on {SERVER_IP} : {SERVER_PORT}")
+logging.info(f"Server started on {SERVER_IP} : {SERVER_PORT}.")
 
 
 def get_client_by_pseudonym(pseudonym):
@@ -44,7 +44,7 @@ def handle_start_game(client_socket, parts):
     if not game_active:
         game_active = True
         broadcast_message("Game has started. No new players can join.")
-        logging.info("Game started")
+        logging.info("Game started.")
     else:
         client_socket.send(b"Game has already started.")
 
@@ -54,7 +54,7 @@ def handle_ban(target_client):
         target_client.send("You have been banned from the game.".encode('utf-8'))
         ban_message = f"Player {clients[target_client]['pseudonym']} has been banned."
         broadcast_message(target_client, ban_message.encode('utf-8'))
-        logging.info(f"{ban_message} By {clients[target_client]['Admin']}")
+        logging.info(f"{ban_message} By {clients[target_client]['Admin']}.")
         target_client.close()
         clients.pop(target_client, None)
     else:
@@ -67,9 +67,9 @@ def handle_suspend(target_client):
         try:
             message = "suspend_input"  # The client will need logic to handle this command
             target_client.send(message.encode('utf-8'))
-            logging.info(f"Admin sent suspend command to {clients[target_client]['pseudonym']}")
+            logging.info(f"Admin sent suspend command to {clients[target_client]['pseudonym']}.")
         except Exception as e:
-            logging.error(f"Failed to send suspend command to {clients[target_client]['pseudonym']}: {str(e)}")
+            logging.error(f"Failed to send suspend command to {clients[target_client]['pseudonym']}: {str(e)}.")
     else:
         logging.error("Attempted to suspend a non-existent client.")
 
@@ -81,7 +81,7 @@ def handle_forgive(target_client):
             target_client.send(message.encode('utf-8'))
             logging.info(f"{clients[target_client]['pseudonym']} forgiven by Admin.")
         except Exception as e:
-            logging.error(f"Failed to forgive {clients[target_client]['pseudonym']}: {str(e)}")
+            logging.error(f"Failed to forgive {clients[target_client]['pseudonym']}: {str(e)}.")
             target_client.close()
             clients.pop(target_client, None)
     else:
@@ -182,7 +182,7 @@ def process_command(client_socket, message):
         elif command.startswith('@'):
             handle_direct_command(client_socket, parts)
         else:
-            logging.info("Unknown command received")
+            logging.info("Unknown command received.")
     except socket.error as e:
         logging.error("Socket error: " + str(e))
         close_client_connection(client_socket)
@@ -203,7 +203,7 @@ def broadcast_message(sender_socket, message):
             try:
                 client_socket.send(full_message)  # Send the message to each client
             except Exception as e:
-                logging.error(f"Failed to send message to {clients[client_socket]['address'][0]}: {str(e)}")
+                logging.error(f"Failed to send message to {clients[client_socket]['address'][0]}: {str(e)}.")
                 client_socket.close()
                 closed_clients.append(client_socket)
     # Clean up closed client sockets
@@ -215,7 +215,7 @@ def close_client_connection(client_socket):
     try:
         client_socket.close()
         clients.pop(client_socket, None)
-        logging.info(f"Closed connection from {clients[client_socket]['address'][0]}")
+        logging.info(f"Closed connection from {clients[client_socket]['address'][0]}.")
     except Exception as e:
         logging.error("Error closing client connection: " + str(e))
 
@@ -237,7 +237,7 @@ def start_server():
                         #logging.info("test2")
                     else:
                         clients[client_socket] = {'address': client_address, 'data': [], 'pseudonym': pseudonym}
-                        logging.info(f"Accepted new connection from {client_address[0]} : {client_address[1]} with pseudonym: {pseudonym}")
+                        logging.info(f"Accepted new connection from {client_address[0]} : {client_address[1]} with pseudonym: {pseudonym}.")
                 else:
                     try:
                         message = notified_socket.recv(1024)
@@ -247,14 +247,14 @@ def start_server():
                             else:
                                 # Broadcast the message to other clients
                                 broadcast_message(notified_socket, message)
-                                logging.debug(f"Broadcasted message from {pseudonym}, message: {message.decode('utf-8')}")
+                                logging.debug(f"Broadcasted message from {pseudonym}, message: {message.decode('utf-8')}.")
                         else:
                             # No message means the client has disconnected
-                            logging.info(f"Closed connection from {pseudonym} of address {clients[notified_socket]['address'][0]}")
+                            logging.info(f"Closed connection from {pseudonym} of address {clients[notified_socket]['address'][0]}.")
                             clients.pop(notified_socket)
                             notified_socket.close()
                     except Exception as e:
-                        logging.error(f"Error handling message from {pseudonym} of address {clients[notified_socket]['address'][0]}: {str(e)}")
+                        logging.error(f"Error handling message from {pseudonym} of address {clients[notified_socket]['address'][0]}: {str(e)}.")
                         clients.pop(notified_socket)
                         notified_socket.close()
 
@@ -267,7 +267,7 @@ def start_server():
                 close_client_connection(notified_socket)
                 
     except Exception as e:
-        logging.error(f"Fatal error in server main loop: {str(e)}")
+        logging.error(f"Fatal error in server main loop: {str(e)}.")
     finally:
         logging.info("Server shutting down...")
         server_socket.close()
