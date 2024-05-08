@@ -1,9 +1,7 @@
 # Import necessary libraries
 import socket
 import select
-import threading
 import os
-import sys
 from collections import defaultdict
 import logging
 
@@ -20,6 +18,7 @@ MODERATOR_PSEUDONYM = "Admin"
 # Client management variables
 clients = {}  # Dictionary to store client socket objects along with additional information
 client_states = defaultdict(lambda: "active")  # Tracks the current state ('active', 'suspended', etc.) of each client
+game_active = False # Flag to indicate if the game has started
 
 # Socket setup
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -42,16 +41,17 @@ def get_client_by_pseudonym(pseudonym):
 
 #-------------------------------------------------#
 
-
-def handle_start_game(client_socket, parts):
+def handle_start_game():
     """Handle the !start command to begin the game."""
     global game_active
-    if not game_active:
+    logging.info("Received a request to start the game.")
+    if game_active == False:
         game_active = True
-        broadcast_message("Game has started. No new players can join.")
-        logging.info("Game started.")
+        broadcast_message_to_all("Game has started. No new players can join.")
+        logging.info("Game started!")
     else:
-        client_socket.send(b"Game has already started.")
+        broadcast_message_to_all("Game has already started.")
+        logging.info("Attempt to start an already active game.")
 
 def handle_ban(target_client):
     """Ban a player specified by the client socket."""
@@ -65,32 +65,35 @@ def handle_ban(target_client):
     else:
         logging.error("Attempted to ban a non-existent client.")
 
-def handle_suspend(target_client):
-    """Instruct the client to suspend (freeze) its input terminal."""
-    if target_client in clients:
-        # Send a command to the client that will be interpreted as an instruction to suspend its input process
+def handle_suspend(client_socket):
+    if client_socket in clients:
         try:
-            message = "suspend_input"  # The client will need logic to handle this command
-            target_client.send(message.encode('utf-8'))
-            logging.info(f"Admin sent suspend command to {clients[target_client]['pseudonym']}.")
+            clients[client_socket]['state'] = 'suspended'
+            client_states[client_socket] = 'suspended'  # Update the state in the dictionary
+            client_socket.send("You have been suspended.".encode('utf-8'))
+            logging.info(f"{clients[client_socket]['pseudonym']} has been suspended.")
         except Exception as e:
-            logging.error(f"Failed to send suspend command to {clients[target_client]['pseudonym']}: {str(e)}.")
-    else:
-        logging.error("Attempted to suspend a non-existent client.")
+            logging.error("Failed to suspend client: " + str(e))
 
-def handle_forgive(target_client):
-    """Resume a suspended client's input terminal."""
-    if target_client in clients:
+def handle_forgive(client_socket):
+    if client_socket in clients:
         try:
-            message = "resume_input"  # The client should handle this command
-            target_client.send(message.encode('utf-8'))
-            logging.info(f"{clients[target_client]['pseudonym']} forgiven by Admin.")
+            clients[client_socket]['state'] = 'active'
+            client_states[client_socket] = 'active'  # Update the state back to active
+            client_socket.send("You have been forgiven and can participate again.".encode('utf-8'))
+            logging.info(f"{clients[client_socket]['pseudonym']} has been forgiven.")
         except Exception as e:
-            logging.error(f"Failed to forgive {clients[target_client]['pseudonym']}: {str(e)}.")
-            target_client.close()
-            clients.pop(target_client, None)
-    else:
-        logging.error("Attempted to resume a non-existent client.")
+            logging.error("Failed to lift suspension: " + str(e))
+
+def handle_list_command(client_socket):
+    """Handle the !list command to display the status of all clients."""
+    status_message = "Current clients:\n"
+    for client, details in clients.items():
+        pseudonym = details['pseudonym']
+        state = client_states[client]
+        status_message += f"{pseudonym} - {state}\n"
+    client_socket.send(status_message.encode('utf-8'))
+    #client_socket.send(f"Active clients: {', '.join([clients[sock]['pseudonym'] for sock in clients])}".encode('utf-8'))
 
 def handle_direct_command(client_socket, parts):
     sender_pseudonym = clients[client_socket]['pseudonym']  # Retrieve sender's pseudonym
@@ -181,10 +184,14 @@ def process_command(client_socket, message):
         parts = message.decode('utf-8').strip().split()   # parts is something like ['@User', 'msg'] so it is 2D array
         command = parts[0]
         sender_pseudonym = clients[client_socket]['pseudonym']  # Retrieve sender's pseudonym
-
         # Check if the client is suspended
-        if client_states[client_socket] == "suspended":
+
+
+        if client_states[client_socket] == 'suspended':
+            #TODO to be fixed
+            logging.info("T1")
             if command.startswith('@') or command == "logout":
+                logging.info("T2")
                 # Suspended clients should not be able to execute commands
                 client_socket.send("You are suspended and cannot execute commands.".encode('utf-8'))
                 return
@@ -194,7 +201,9 @@ def process_command(client_socket, message):
                 return
 
         # Process commands or logout requests
-        if command == "!logout":
+        if command == '!start':
+            handle_start_game()
+        elif command == "!logout":
             handle_logout(client_socket)
         elif command == "!shutdown":
             if sender_pseudonym == MODERATOR_PSEUDONYM:
@@ -202,7 +211,7 @@ def process_command(client_socket, message):
             else:
                 client_socket.send("Unauthorized to shut down the server.".encode('utf-8'))
         elif command == "!list":
-            client_socket.send(f"Active clients: {', '.join([clients[sock]['pseudonym'] for sock in clients])}".encode('utf-8'))
+            handle_list_command(client_socket)
         elif command.startswith('@'):
             handle_direct_command(client_socket, parts)
         else:
@@ -233,6 +242,18 @@ def broadcast_message(sender_socket, message):
     # Clean up closed client sockets
     for client_socket in closed_clients:
         clients.pop(client_socket, None)
+    return sender_pseudonym
+
+def broadcast_message_to_all(message):
+    """Broadcast a message to all connected clients."""
+    full_message = message.encode('utf-8')
+    for client_socket in clients:
+        try:
+            client_socket.send(full_message)
+        except Exception as e:
+            logging.error(f"Failed to send message to {clients[client_socket]['address'][0]}: {str(e)}")
+            client_socket.close()
+            clients.pop(client_socket, None)
 
 def close_client_connection(client_socket):
     try:
@@ -261,6 +282,10 @@ def start_server():
                         logging.info("Attempted to use an existing pseudonym.")
                         client_socket.close()
                         #logging.info("test2")
+                    elif game_active == True:
+                        client_socket.send(b"Game has already started. Cannot join now.")
+                        logging.info("Attempted to join after game has started.")
+                        client_socket.close()
                     else:
                         clients[client_socket] = {'address': client_address, 'data': [], 'pseudonym': pseudonym}
                         logging.info(f"Accepted new connection from {client_address[0]} : {client_address[1]} with pseudonym: {pseudonym}.")
@@ -268,12 +293,13 @@ def start_server():
                     try:
                         message = notified_socket.recv(1024)
                         if message:
-                            if message.startswith(b'!') or b'@' in message:   #data from the socket is in the form b'xyz'
+                            if message.startswith(b'!') or b'@' in message or client_states[client_socket] == "suspended":   #data from the socket is in the form b'xyz'
+                                #logging.info("TEST12")
                                 process_command(notified_socket, message)
                             else:
                                 # Broadcast the message to other clients
-                                broadcast_message(notified_socket, message)
-                                logging.debug(f"Broadcasted message from {pseudonym}, message: {message.decode('utf-8')}.")
+                                sender = broadcast_message(notified_socket, message)
+                                logging.debug(f"Broadcasted message from {sender}, message: {message.decode('utf-8')}.")
                         else:
                             # No message means the client has disconnected
                             logging.info(f"Closed connection from {pseudonym} of address {clients[notified_socket]['address'][0]}.")

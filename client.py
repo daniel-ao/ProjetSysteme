@@ -1,10 +1,7 @@
 import socket
-import select
-import os
 import sys
 import threading
 import logging
-import time
 logging.basicConfig(filename='client.log', filemode='a', level=logging.DEBUG,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
