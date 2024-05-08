@@ -71,7 +71,7 @@ def handle_suspend(client_socket):
             clients[client_socket]['state'] = 'suspended'
             client_states[client_socket] = 'suspended'  # Update the state in the dictionary
             client_socket.send("You have been suspended.".encode('utf-8'))
-            logging.info(f"{clients[client_socket]['pseudonym']} has been suspended.")
+            logging.info(f"{clients[client_socket]['pseudonym']} has been suspended.")   
         except Exception as e:
             logging.error("Failed to suspend client: " + str(e))
 
@@ -184,21 +184,12 @@ def process_command(client_socket, message):
         parts = message.decode('utf-8').strip().split()   # parts is something like ['@User', 'msg'] so it is 2D array
         command = parts[0]
         sender_pseudonym = clients[client_socket]['pseudonym']  # Retrieve sender's pseudonym
+
         # Check if the client is suspended
-
-
         if client_states[client_socket] == 'suspended':
-            #TODO to be fixed
-            logging.info("T1")
-            if command.startswith('@') or command == "logout":
-                logging.info("T2")
-                # Suspended clients should not be able to execute commands
-                client_socket.send("You are suspended and cannot execute commands.".encode('utf-8'))
-                return
-            else:
-                # Allow suspended clients to receive messages but not send
-                logging.info(f"Suspended user {sender_pseudonym} attempted to send a message.")
-                return
+            # Suspended clients should not be able to execute commands
+            client_socket.send("You are suspended and cannot execute commands or send messages.".encode('utf-8'))
+            return
 
         # Process commands or logout requests
         if command == '!start':
@@ -281,7 +272,6 @@ def start_server():
                         client_socket.send(b"Pseudonym already in use.")
                         logging.info("Attempted to use an existing pseudonym.")
                         client_socket.close()
-                        #logging.info("test2")
                     elif game_active == True:
                         client_socket.send(b"Game has already started. Cannot join now.")
                         logging.info("Attempted to join after game has started.")
@@ -293,8 +283,9 @@ def start_server():
                     try:
                         message = notified_socket.recv(1024)
                         if message:
-                            if message.startswith(b'!') or b'@' in message or client_states[client_socket] == "suspended":   #data from the socket is in the form b'xyz'
-                                #logging.info("TEST12")
+                            if client_states[notified_socket] == 'suspended':
+                                process_command(notified_socket, message)
+                            elif message.startswith(b'!') or b'@' in message: 
                                 process_command(notified_socket, message)
                             else:
                                 # Broadcast the message to other clients
