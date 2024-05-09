@@ -12,6 +12,7 @@ def clear_line():
     sys.stdout.write('\r')
     sys.stdout.write('\033[K')  # ANSI escape sequence to clear the line
 
+#-------------------------------------------------#
 
 def receive_messages(sock,run_flag):
     """Continuously listen for messages from the server using a non-blocking socket."""
@@ -48,6 +49,7 @@ def receive_messages(sock,run_flag):
         input()  # Wait for the user to press Enter
 
 #-------------------------------------------------#
+
 def main():
     server_ip = "127.0.0.1"
     server_port = 2024
@@ -98,7 +100,8 @@ def main():
         print(f"Failed to connect to the server at {server_ip} : {server_port} : {e}")
         sys.exit()
 
-if __name__ == "__main__":
-    main()
 
+#-------------------------------------------------#
+if __name__ == "__main__":                        #
+    main()                                        #                
 #-------------------------------------------------#
