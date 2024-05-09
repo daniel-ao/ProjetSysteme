@@ -5,31 +5,35 @@ import os
 from collections import defaultdict
 import logging
 
-# Setup basic logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Server configuration variables
-SERVER_IP = '127.0.0.1'  # Listen on all network interfaces
-SERVER_PORT = 2024  # Port to listen on
-MAX_CONNECTIONS = 10  # Maximum number of simultaneous client connections
-MODERATOR_PSEUDONYM = "Admin"
+#--------------------------------------------------------------------------------------------#
+# Setup basic logging                                                                        #
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s') #
+#--------------------------------------------------------------------------------------------#
+# Server configuration variables                                                             #
+SERVER_IP = '127.0.0.1'  # Listen on all network interfaces                                  #
+SERVER_PORT = 2024  # Port to listen on                                                      # 
+MAX_CONNECTIONS = 10  # Maximum number of simultaneous client connections                    #
+MODERATOR_PSEUDONYM = "Admin"                                                                # 
+#-----------------------------------------------------------------------------------------------------------------------#
+# Client management variables                                                                                           #
+# Client management variables                                                                                           #
+clients = {}  # Dictionary to store client socket objects along with additional information                             #
+client_states = defaultdict(lambda: "active")  # Tracks the current state ('active', 'suspended', etc.) of each client  #
+game_active = False # Flag to indicate if the game has started                                                          #                              
+#-----------------------------------------------------------------------------------------------------------------------#
+# Socket setup                                                                                                          #         
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                                                       #                          
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)                                                     #
+server_socket.bind((SERVER_IP, SERVER_PORT))                                                                            #                                        
+server_socket.listen(MAX_CONNECTIONS)                                                                                   #                                     
+#-----------------------------------------------------------------------------------------------------------------------#
+logging.info(f"Server started on {SERVER_IP} : {SERVER_PORT}.")                                                         #       
+#-----------------------------------------------------------------------------------------------------------------------#
 
-
-# Client management variables
-clients = {}  # Dictionary to store client socket objects along with additional information
-client_states = defaultdict(lambda: "active")  # Tracks the current state ('active', 'suspended', etc.) of each client
-game_active = False # Flag to indicate if the game has started
-
-# Socket setup
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server_socket.bind((SERVER_IP, SERVER_PORT))
-server_socket.listen(MAX_CONNECTIONS)
-
-logging.info(f"Server started on {SERVER_IP} : {SERVER_PORT}.")
-
+   
 #-------------------------------------------------#
-
+# Helper functions
 
 def get_client_by_pseudonym(pseudonym):
     """Retrieve client socket based on pseudonym."""
@@ -38,8 +42,17 @@ def get_client_by_pseudonym(pseudonym):
             return client
     return None
 
+def close_client_connection(client_socket):
+    try:
+        client_socket.close()
+        clients.pop(client_socket, None)
+        logging.info(f"Closed connection from {clients[client_socket]['address'][0]}.")
+    except Exception as e:
+        logging.error("Error closing client connection: " + str(e))
+
 
 #-------------------------------------------------#
+# Command handling functions
 
 def handle_start_game():
     """Handle the !start command to begin the game."""
@@ -56,6 +69,9 @@ def handle_start_game():
 def handle_ban(target_client):
     """Ban a player specified by the client socket."""
     if target_client in clients:
+        if target_client == get_client_by_pseudonym(MODERATOR_PSEUDONYM):
+            logging.info("Admin cannot ban themselves.")
+            return
         target_client.send("You have been banned from the game.".encode('utf-8'))
         ban_message = f"Player {clients[target_client]['pseudonym']} has been banned"
         broadcast_message(target_client, ban_message.encode('utf-8'))
@@ -67,16 +83,35 @@ def handle_ban(target_client):
 
 def handle_suspend(client_socket):
     if client_socket in clients:
+        # Check if the target is the moderator or if the client is already suspended
+        if client_socket == get_client_by_pseudonym(MODERATOR_PSEUDONYM):
+            #client_socket.send("Admin cannot be suspended.".encode('utf-8'))
+            logging.info("Attempt to suspend the admin was blocked.")
+            return
+
+        if client_states[client_socket] == 'suspended':
+            #client_socket.send(f"{clients[client_socket]['pseudonym']} is already suspended.".encode('utf-8'))
+            broadcast_message_to_all(f"{clients[client_socket]['pseudonym']} is already suspended.")
+            logging.info(f"Attempt to re-suspend {clients[client_socket]['pseudonym']} was blocked.")
+            return
+
         try:
             clients[client_socket]['state'] = 'suspended'
             client_states[client_socket] = 'suspended'  # Update the state in the dictionary
             client_socket.send("You have been suspended.".encode('utf-8'))
-            logging.info(f"{clients[client_socket]['pseudonym']} has been suspended.")   
+            logging.info(f"{clients[client_socket]['pseudonym']} has been suspended.")
         except Exception as e:
-            logging.error("Failed to suspend client: " + str(e))
+            logging.error(f"Failed to suspend {clients[client_socket]['pseudonym']}: {str(e)}")
 
 def handle_forgive(client_socket):
     if client_socket in clients:
+        if client_socket == get_client_by_pseudonym(MODERATOR_PSEUDONYM):
+            logging.info("Admin cannot forgive themselves.")
+            return
+        if client_states[client_socket] == 'active':
+            broadcast_message_to_all(f"{clients[client_socket]['pseudonym']} is not suspended to be forgiven.")
+            logging.info(f"Attempt to forgive {clients[client_socket]['pseudonym']} which is not suspended was blocked.")
+            return
         try:
             clients[client_socket]['state'] = 'active'
             client_states[client_socket] = 'active'  # Update the state back to active
@@ -84,6 +119,44 @@ def handle_forgive(client_socket):
             logging.info(f"{clients[client_socket]['pseudonym']} has been forgiven.")
         except Exception as e:
             logging.error("Failed to lift suspension: " + str(e))
+            
+def handle_PM(message, recipients, sender_pseudonym, client_socket):
+    # Handling private message to one or more users including Moderator
+        if len(message) == 0:
+            client_socket.send("You didn't enter a message.".encode('utf-8'))
+            return
+
+        final_message = f"PM from {sender_pseudonym}: {' '.join(message)}"
+        # Send message to all recipients and Moderator (if not already included)
+        recipients.append(MODERATOR_PSEUDONYM)  # Ensure moderator gets the PM
+        recipients = set(recipients)  # Remove duplicates
+        for recipient in recipients:
+            target_client = get_client_by_pseudonym(recipient)
+            if target_client:
+                target_client.send(final_message.encode('utf-8'))
+            elif recipient != MODERATOR_PSEUDONYM:
+                client_socket.send(f"No such user: {recipient}".encode('utf-8'))
+            #else:
+            #   client_socket.send(f"No such user: {recipient}".encode('utf-8'))
+
+def handle_logout(client_socket):
+    """Handle the logout command."""
+    logging.info(f"Client {clients[client_socket]['pseudonym']} has disconnected.")
+    client_socket.send(b"Goodbye!")
+    client_socket.close()
+    clients.pop(client_socket, None)
+
+def handle_shutodwn():
+    logging.info("Server is shutting down on admin command.")
+    for client_socket in list(clients.keys()):
+        try:
+            client_socket.send("Server is shutting down.".encode('utf-8'))
+            client_socket.close()
+        except socket.error as e:
+            logging.error(f"Error closing client socket: {e}")
+    global server_socket
+    server_socket.close()
+    os._exit(0)  # Forcefully stop the program
 
 def handle_list_command(client_socket):
     """Handle the !list command to display the status of all clients."""
@@ -94,6 +167,10 @@ def handle_list_command(client_socket):
         status_message += f"{pseudonym} - {state}\n"
     client_socket.send(status_message.encode('utf-8'))
     #client_socket.send(f"Active clients: {', '.join([clients[sock]['pseudonym'] for sock in clients])}".encode('utf-8'))
+
+
+#-------------------------------------------------#
+# Command processing functions
 
 def handle_direct_command(client_socket, parts):
     sender_pseudonym = clients[client_socket]['pseudonym']  # Retrieve sender's pseudonym
@@ -137,46 +214,7 @@ def handle_direct_command(client_socket, parts):
         else:
             client_socket.send("Unknown command.".encode('utf-8'))
     else:
-        # Handling private message to one or more users including Moderator
-        if len(message) == 0:
-            client_socket.send("You didn't enter a message.".encode('utf-8'))
-            return
-
-        final_message = f"PM from {sender_pseudonym}: {' '.join(message)}"
-        # Send message to all recipients and Moderator (if not already included)
-        recipients.append(MODERATOR_PSEUDONYM)  # Ensure moderator gets the PM
-        recipients = set(recipients)  # Remove duplicates
-        for recipient in recipients:
-            target_client = get_client_by_pseudonym(recipient)
-            if target_client:
-                target_client.send(final_message.encode('utf-8'))
-            elif recipient != MODERATOR_PSEUDONYM:
-                client_socket.send(f"No such user: {recipient}".encode('utf-8'))
-            #else:
-            #   client_socket.send(f"No such user: {recipient}".encode('utf-8'))
-            
-def handle_logout(client_socket):
-    """Handle the logout command."""
-    logging.info(f"Client {clients[client_socket]['pseudonym']} has disconnected.")
-    client_socket.send(b"Goodbye!")
-    client_socket.close()
-    clients.pop(client_socket, None)
-
-def handle_shutodwn():
-    logging.info("Server is shutting down on admin command.")
-    for client_socket in list(clients.keys()):
-        try:
-            client_socket.send("Server is shutting down.".encode('utf-8'))
-            client_socket.close()
-        except socket.error as e:
-            logging.error(f"Error closing client socket: {e}")
-    global server_socket
-    server_socket.close()
-    os._exit(0)  # Forcefully stop the program
-
-
-#-------------------------------------------------#
-
+        handle_PM(message, recipients, sender_pseudonym, client_socket)
 
 def process_command(client_socket, message):
     try:
@@ -217,6 +255,10 @@ def process_command(client_socket, message):
         logging.error("Unexpected error: " + str(e))
         # Handle unexpected exceptions
 
+
+#-------------------------------------------------#
+# Broadcast functions
+
 def broadcast_message(sender_socket, message):
     """Broadcast a message to all clients except the sender, including the sender's pseudonym."""
     sender_pseudonym = clients[sender_socket]['pseudonym']  # Get the pseudonym of the sender
@@ -246,18 +288,10 @@ def broadcast_message_to_all(message):
             client_socket.close()
             clients.pop(client_socket, None)
 
-def close_client_connection(client_socket):
-    try:
-        client_socket.close()
-        clients.pop(client_socket, None)
-        logging.info(f"Closed connection from {clients[client_socket]['address'][0]}.")
-    except Exception as e:
-        logging.error("Error closing client connection: " + str(e))
-
 
 #-------------------------------------------------#
-
 # Main function to start the server
+
 def start_server():
     try:
         while True:
@@ -268,6 +302,21 @@ def start_server():
                 if notified_socket == server_socket:
                     client_socket, client_address = server_socket.accept()
                     pseudonym = client_socket.recv(1024).decode('utf-8').strip()  # Assume the first message is the pseudonym
+                    '''
+                         if pseudonym == MODERATOR_PSEUDONYM:
+                        client_socket.send(b"Enter the password for Admin:")
+                        password = client_socket.recv(1024).decode('utf-8').strip()
+                        if password != "admin123":  # Assume admin123 is the correct password
+                            client_socket.send(b"Incorrect password. Connection terminated.")
+                            logging.info("Attempted to login as Admin with incorrect password.")
+                            client_socket.close()
+                            continue
+                        else:
+                            client_socket.send(b"Password correct. Welcome, Admin.\n")  # Append a newline to separate from future commands
+                            clients[client_socket] = {'address': client_address, 'pseudonym': pseudonym, 'state': 'active'}
+                            logging.info(f"Admin logged in from {client_address}")
+                            continue  # Skip to the next iteration to prevent sending an extra prompt
+                    '''
                     if pseudonym in [clients[sock]['pseudonym'] for sock in clients]:
                         client_socket.send(b"Pseudonym already in use.")
                         logging.info("Attempted to use an existing pseudonym.")
@@ -313,8 +362,14 @@ def start_server():
             close_client_connection(client_socket)
 
 
+#-------------------------------------------------#
 
-if __name__ == "__main__":
-    start_server()
+
 
 #-------------------------------------------------#
+if __name__ == "__main__":                        #
+    start_server()                                #    
+#-------------------------------------------------#
+
+
+
