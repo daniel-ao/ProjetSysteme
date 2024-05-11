@@ -61,13 +61,22 @@ def main():
         sock.connect((server_ip, server_port))
         print(f"Connected to {server_ip} on port {server_port}")
 
-        # Get the pseudonym before creating the socket
         pseudonym = input("Enter your pseudonym: ")
         while not pseudonym.strip():
             print("Pseudonym cannot be empty. Please enter a valid pseudonym.")
             pseudonym = input("Enter your pseudonym: ")
-        sock.send(pseudonym.encode('utf-8'))  # Send pseudonym immediately after connecting
+        sock.send(pseudonym.encode('utf-8'))
 
+        if pseudonym == "Admin":
+            password_prompt = sock.recv(1024).decode('utf-8')
+            print(password_prompt, end='')
+            password = input()
+            sock.send(password.encode('utf-8'))
+            auth_response = sock.recv(1024).decode('utf-8')
+            print(auth_response)
+            if "Incorrect password" in auth_response:
+                sock.close()
+                return
         run_flag = {'active': True}
         receiver_thread = threading.Thread(target=receive_messages, args=(sock, run_flag))
         receiver_thread.start()

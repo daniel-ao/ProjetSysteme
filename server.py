@@ -344,11 +344,11 @@ def start_server():
                 if notified_socket == server_socket:
                     client_socket, client_address = server_socket.accept()
                     pseudonym = client_socket.recv(1024).decode('utf-8').strip()  # Assume the first message is the pseudonym
-                    '''
-                        if pseudonym == MODERATOR_PSEUDONYM:
+                    
+                    if pseudonym == MODERATOR_PSEUDONYM:
                         client_socket.send(b"Enter the password for Admin:")
                         password = client_socket.recv(1024).decode('utf-8').strip()
-                        if password != "admin123":  # Assume admin123 is the correct password
+                        if password != "admin123":  
                             client_socket.send(b"Incorrect password. Connection terminated.")
                             logging.info("Attempted to login as Admin with incorrect password.")
                             client_socket.close()
@@ -358,7 +358,7 @@ def start_server():
                             clients[client_socket] = {'address': client_address, 'pseudonym': pseudonym, 'state': 'active'}
                             logging.info(f"Admin logged in from {client_address}")
                             continue  # Skip to the next iteration to prevent sending an extra prompt
-                    '''
+                    
                     if pseudonym in [clients[sock]['pseudonym'] for sock in clients]:
                         client_socket.send(b"Pseudonym already in use.")
                         logging.info("Attempted to use an existing pseudonym.")
