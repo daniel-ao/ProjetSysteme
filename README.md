@@ -55,7 +55,7 @@ Command Manual for Chat/Game Server:
 #--------------------------------------------------------------------------------#
 
 General Information of the project:
-The server script is designed to handle multiple client connections, manage client statuses, and process various commands in a chat/game environment. The server operates on IP 127.0.0.1 and port 2024, supporting up to 10 simultaneous connections. It utilizes socket programming, select for handling I/O multiplexing, and includes extensive logging for debugging and monitoring activities.
+The server script is designed to handle multiple client connections, manage client statuses, and process various commands in a chat/game environment. The server operates on IP 127.0.0.1 and optional PORT, supporting up to 10 simultaneous connections. It utilizes socket programming, select for handling I/O multiplexing, and includes extensive logging for debugging and monitoring activities.
 
 ⚪Key Features:
 
