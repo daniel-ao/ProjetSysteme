@@ -36,7 +36,7 @@ def receive_messages(sock,run_flag):
                 continue
             except socket.error as e:
                 if run_flag['active']:
-                    print(f"Socket errorTest: {e}")
+                    #print(f"Socket errorTest: {e}")
                     break
             except Exception as e:
                 if run_flag['active']:
@@ -45,7 +45,7 @@ def receive_messages(sock,run_flag):
     finally:
         print("Cleaning up connection...")
         sock.close()
-        print("You are now disconnected. Please close the terminal manually or press Enter to exit.")
+        print("You are now disconnected. Please close the terminal manually or press Enter or double Enter to exit.")
         input()  # Wait for the user to press Enter
 
 #-------------------------------------------------#
@@ -65,13 +65,13 @@ def main():
         sock.connect((server_ip, server_port))
         print(f"Connected to {server_ip} on port {server_port}")
 
-        pseudonym = input("Enter your pseudonym: ")
-        while not pseudonym.strip():
-            print("Pseudonym cannot be empty. Please enter a valid pseudonym.")
-            pseudonym = input("Enter your pseudonym: ")
-        sock.send(pseudonym.encode('utf-8'))
+        USERNAME = input("Enter your USERNAME: ")
+        while not USERNAME.strip():
+            print("USERNAME cannot be empty. Please enter a valid USERNAME.")
+            USERNAME = input("Enter your USERNAME: ")
+        sock.send(USERNAME.encode('utf-8'))
 
-        if pseudonym == "Admin":
+        if USERNAME == "Admin":
             password_prompt = sock.recv(1024).decode('utf-8')
             print(password_prompt, end='')
             password = input()

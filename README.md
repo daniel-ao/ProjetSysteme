@@ -1,35 +1,56 @@
 # ProjetSysteme
 Project on Operating systems
 
-ABOU ORM Daniel:
+•ABOU ORM Daniel:
 For this project, I worked alone on it, and as you know we were supposed to work on this project as a pair with Joe, but due to the difficulties and the dependency of the project, we then decided to work on this project each one on his own(Please check the email sent from daniel.abou-om@etu.univ-cotedazur.fr to alexandre.bonlarron@etu.univ-cotedazur.fr;; in which I explained all the details regarding this.)
 
-For the demo, I had some features working, but the features were full of bugs, and didn't handle various scenarios that may rise or occur with the client, so I worked on all these features, and fixed all the bugs that might appear.
+•For the demo, I had some features working, but the features were full of bugs, and didn't handle various scenarios that may rise or occur with the client, so I worked on all these features, and fixed all the bugs that might appear.
 
-For the part on which I remained stuck, it was the command '!suspend' where it took from me more than 2 days just trying to fix it, and the bugs that appears everytime after it works.
-Another point which was when the client disconnects, or the server disconnects he still got the prompt to enter a message or execute a command, so I added a feature when the client disconnects, he is prompted to press 'enter' which will get him to normally use his terminal again without having to use 'Ctrl-C'
+•Points Stuck on:
+    For the part on which I remained stuck, it was the command '!suspend' where it took from me more than 2 days just trying to fix it, and the bugs that appears everytime after it works.
+    Another point which was when the client disconnects, or the server disconnects he still got the prompt to enter a message or execute a command, so I added a feature when the client disconnects, he is prompted to press 'enter' which will get him to normally use his terminal again without having to use 'Ctrl-C'
 
 •Auto-évaluation:
-I did everything I have to do in the Barème of the 'Travail seul' untill the "Tolérance aux diverses pannes de client".
-Except one part of the last point of it which was the "Technique du cookie"
+    I did everything I have to do in the Barème of the 'Travail seul' untill the "Tolérance aux diverses pannes de client".
+    Except one part of the last point of it which was the "Technique du cookie"
 
-STABLE
+•Different versions:
+    For the different stable/unstable versions of my project I am gonna share with you my  'git repository' and you can check there the different commits I had on my project.
+    'https://github.com/daniel-ao/ProjetSysteme'
+
 
 #--------------------------------------------------------------------------------#
 Manual of the project:
+To login with Admin:
+USERNAME: Admin
+Password: admin123
 
 Execute the following command to start the server:
-    'python3 server.py'
-    You should see a message indicating that the server has started, e.g., "Server started on 127.0.0.1 : 2024."
+    'python3 server.py PORT'
+    You should see a message indicating that the server has started, 
+    "Server started on 127.0.0.1 : PORT."
 
+Run the Client Script by executiing th following command:
+    python3 client.py ADDRESS PORT
+    The script will then prompt you to enter a USERNAME. If the USERNAME is already taken or if the game has started, you will be informed and disconnected.
 
 Command Manual for Chat/Game Server:
+    Admin Credentials:
+        To perform administrative actions. The Admin must first log in using the special USERNAME 'Admin' and the correct password.
+    Commands Available for the clients:
+        • Sending normal messages 
+        •!list
+        •'!logout' AND 'quit'(A client can use 'quit' to quit if he was suspended)
+        • Private messages with form of (@USR1 @USR2 Private Message)
+    Commands Available for the Admin:
+        • All the ones available for the client
+        • !start (start the game)
+        • !shutdown (shutdown the sever)
+        • @USR !ban
+        • @USR !suspend
+        • @USR !forgive
+        
 
-Commands Available for the clients:
-    • Sending normal messages 
-    •!list
-    •'!logout' AND 'quit'
-    • Private messages with form of (@USR1 @USR2 Private Message)
 
 #--------------------------------------------------------------------------------#
 
@@ -37,13 +58,14 @@ General Information of the project:
 The server script is designed to handle multiple client connections, manage client statuses, and process various commands in a chat/game environment. The server operates on IP 127.0.0.1 and port 2024, supporting up to 10 simultaneous connections. It utilizes socket programming, select for handling I/O multiplexing, and includes extensive logging for debugging and monitoring activities.
 
 ⚪Key Features:
+
     1)Basic Configuration and Logging:
 
         Logging is set up to track events with timestamps, severity levels, and messages to help in debugging and monitoring server activities.
 
     2)Client Management:
 
-        Clients are managed through a dictionary that stores each client's socket object along with their pseudonym and current state (active, suspended, etc.).
+        Clients are managed through a dictionary that stores each client's socket object along with their USERNAME and current state (active, suspended, etc.).
         The server tracks game states, determining whether new players can join.
 
     3)Command Handling:
@@ -83,7 +105,7 @@ The server script is designed to handle multiple client connections, manage clie
     Regular clients can send private messages, request client lists, and disconnect using !logout or quit.
 
 ⚪Connection Management:
-    The server handles new connections by accepting them only if the game hasn't started and the pseudonym isn't already in use. It also handles disconnections and errors during message handling, ensuring clients are removed from the management structures appropriately.
+    The server handles new connections by accepting them only if the game hasn't started and the USERNAME isn't already in use. It also handles disconnections and errors during message handling, ensuring clients are removed from the management structures appropriately.
 
 ⚪Startup and Shutdown:
     The server starts by setting up the socket and entering a loop where it waits for client connections or messages. It can be gracefully shut down by an Admin command, which ensures all clients are properly disconnected before stopping the server process.
