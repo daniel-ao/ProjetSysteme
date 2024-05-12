@@ -51,8 +51,12 @@ def receive_messages(sock,run_flag):
 #-------------------------------------------------#
 
 def main():
-    server_ip = "127.0.0.1"
-    server_port = 2024
+    if len(sys.argv) != 3:
+        print("Usage: python3 client.py <address> <port>")
+        sys.exit()
+
+    server_ip = sys.argv[1]
+    server_port = int(sys.argv[2])
     #sock = None
 
     try:

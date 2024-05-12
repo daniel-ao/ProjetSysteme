@@ -4,6 +4,7 @@ import select
 import os
 from collections import defaultdict
 import logging
+import sys
 
 
 #--------------------------------------------------------------------------------------------############################
@@ -12,7 +13,12 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 #--------------------------------------------------------------------------------------------#                          #
 # Server configuration variables                                                             #                          #
 SERVER_IP = '127.0.0.1'  # Listen on all network interfaces                                  #            ^             #
-SERVER_PORT = 2024  # Port to listen on                                                      #     `              `     #
+#SERVER_PORT = 2024  # Port to listen on
+# Check for command-line arguments for the port number
+if len(sys.argv) != 2:
+    print("Usage: python3 server.py <port_number>")
+    sys.exit()       
+SERVER_PORT = int(sys.argv[1])  # Use the port number provided from command-line argument                                  
 MAX_CONNECTIONS = 10  # Maximum number of simultaneous client connections                    #      --------------      #
 MODERATOR_PSEUDONYM = "Admin"                                                                #                          #
 #-----------------------------------------------------------------------------------------------------------------------#
