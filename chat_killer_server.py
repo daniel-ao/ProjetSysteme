@@ -13,16 +13,14 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 #--------------------------------------------------------------------------------------------#                          #
 # Server configuration variables                                                             #                          #
 SERVER_IP = '127.0.0.1'  # Listen on all network interfaces                                  #                          #
-#SERVER_PORT = 2024  # Port to listen on                                                     #           ^              #
-# Check for command-line arguments for the port number                                       #                          #             
-if len(sys.argv) != 2:                                                                       #         ^   ^            #                         
-    print("Usage: python3 server.py <port_number>")                                          #                          #        
+# Check for command-line arguments for the port number                                       #            ^             #             
+if len(sys.argv) != 2:                                                                       #          ^   ^           #                         
+    print("Usage: python3 server.py <port_number>")                                          #        ^   ^  ^          #        
     sys.exit()                                                                               #                          #                                                             
-SERVER_PORT = int(sys.argv[1])  # Use the port number provided from command-line arguments   #                          #                             
-MAX_CONNECTIONS = 10  # Maximum number of simultaneous client connections                    #      --------------      #
-MODERATOR_USERNAME = "Admin"                                                                 #                          #
+SERVER_PORT = int(sys.argv[1])  # Use the port number provided from command-line arguments   #    -                -    #                             
+MAX_CONNECTIONS = 10  # Maximum number of simultaneous client connections                    #    |----------------|    #
+MODERATOR_USERNAME = "Admin"                                                                 #    -                -    #
 #-----------------------------------------------------------------------------------------------------------------------#
-# Client management variables                                                                                           
 # Client management variables                                                                                           
 clients = {}  # Dictionary to store client socket objects along with additional information                             
 client_states = defaultdict(lambda: "active")  # Tracks the current state ('active', 'suspended', etc.) of each client  
@@ -136,7 +134,8 @@ def handle_PM(message, recipients, sender_USERNAME, client_socket):
 
         final_message = f"PM from {sender_USERNAME}: {' '.join(message)}"
         # Send message to all recipients and Moderator (if not already included)
-        recipients.append(MODERATOR_USERNAME)  # Ensure moderator gets the PM
+        if sender_USERNAME != MODERATOR_USERNAME:
+            recipients.append(MODERATOR_USERNAME)  # Ensure moderator gets the PM
         recipients = set(recipients)  # Remove duplicates
         for recipient in recipients:
             target_client = get_client_by_USERNAME(recipient)
