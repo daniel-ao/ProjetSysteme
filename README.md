@@ -3,21 +3,14 @@ Project on Operating systems
 
 ## ABOU ORM Daniel:
 
-For this project, I worked alone on it, and as you know we were supposed to work on this project as a pair with Joe, but due to the difficulties and the dependency of the project, we then decided to work on this project each one on his own(Please check the email sent from daniel.abou-om@etu.univ-cotedazur.fr to alexandre.bonlarron@etu.univ-cotedazur.fr on 8 May 2024 in which I explained all the details regarding this.)
+For this project, I worked alone on it, and it was one of the best projects I worked on, as I was too passion about it, and I would just stay up to 4 am to fix a small bug of this project.
 
-## Points improven after demo:
-
-    For the demo, I had some features working, but the features were full of bugs, and didn't handle various scenarios that may rise or occur with the client, so I worked on all these features, and fixed all the bugs that might appear.
 
 ## Points Stuck on:
 
     For the part on which I remained stuck, it was the command '!suspend' where it took from me more than 2 days just trying to fix it, and the bugs that appears everytime after it works.
     Another point which was when the client disconnects, or the server disconnects he still got the prompt to enter a message or execute a command, so I added a feature when the client disconnects, he is prompted to press 'enter' which will get him to normally use his terminal again without having to use 'Ctrl-C'
 
-## Auto-évaluation:
-
-    I did everything I have to do in the Barème of the 'Travail seul' untill the "Tolérance aux diverses pannes de client".
-    Except one part of the last point of it which was the "Technique du cookie"
 
 ## Different versions:
 
